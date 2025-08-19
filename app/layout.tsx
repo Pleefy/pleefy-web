@@ -1,7 +1,7 @@
 import '../styles/globals.css';
 
 export const metadata = {
-  title: "Pleefy",
+  title: "Pleefy Dashboard",
   description: "Realtime gespreksassistent gekoppeld aan je CRM"
 };
 
