@@ -1,100 +1,99 @@
 'use client';
-import { useEffect, useState } from 'react';
-import { defaultOnboarding, Onboarding } from '../../lib/data';
+import { useEffect, useState } from 'react'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
+import { Input } from '../../components/ui/input'
+import { Textarea } from '../../components/ui/textarea'
+import { Button } from '../../components/ui/button'
+import { Label } from '../../components/ui/label'
 
-export default function OnboardingPage() {
-  const [data,setData] = useState<Onboarding>(defaultOnboarding);
+type Data = {
+  companyName: string;
+  audience: string;
+  goals: string;
+  objections: string;
+  usps: string;
+  ctas: string;
+  tone: string;
+  coaching: string;
+}
 
-  useEffect(()=>{
-    const saved = localStorage.getItem('pleefy-onboarding');
-    if (saved) setData({...defaultOnboarding, ...JSON.parse(saved)});
-  },[]);
+const steps = [
+  { key:'companyName', label:'Bedrijfsnaam' },
+  { key:'audience', label:'Doelgroep(en)' },
+  { key:'goals', label:'Doelen per gesprek' },
+  { key:'objections', label:'Veelvoorkomende bezwaren' },
+  { key:'usps', label:'USP’s' },
+  { key:'ctas', label:'Call-to-Actions' },
+  { key:'tone', label:'Tone of voice' },
+  { key:'coaching', label:'Coaching focus' },
+] as const
 
-  function update<K extends keyof Onboarding>(key: K, value: Onboarding[K]) {
-    const next = {...data, [key]: value};
-    setData(next);
-    localStorage.setItem('pleefy-onboarding', JSON.stringify(next));
+export default function OnboardingPage(){
+  const [data,setData] = useState<Data>({ companyName:'', audience:'MKB beslissers; Operations managers', goals:'Afspraak inplannen; Upsell; CSAT verhogen', objections:'Te duur; Geen tijd; We hebben al iets', usps:'Realtime script; AI-coach; CRM-koppeling', ctas:'Plan demo; Bevestig afspraak; Escaleren', tone:'enthousiast', coaching:'Objection handling; Closing; Empathie' })
+  const [i,setI] = useState(0)
+
+  useEffect(()=>{ const s = localStorage.getItem('pleefy-onboarding'); if (s) setData(JSON.parse(s)) },[])
+  useEffect(()=>{ localStorage.setItem('pleefy-onboarding', JSON.stringify(data)) },[data])
+
+  function exportCSV(){
+    const headers = Object.keys(data)
+    const values = headers.map(h=>JSON.stringify((data as any)[h]))
+    const csv = headers.join(',')+'\n'+values.join(',')
+    const blob = new Blob([csv], {type:'text/csv'})
+    const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='onboarding.csv'; a.click(); URL.revokeObjectURL(url)
   }
 
-  function listInput(label: string, key: keyof Onboarding, placeholder: string) {
-    const arr = (data[key] as string[]);
-    return (
-      <div className="card">
-        <label className="small">{label}</label>
-        <div className="grid" style={{gridTemplateColumns:'1fr'}}>
-          {arr.map((v,i)=>(
-            <input key={i} className="input" value={v} onChange={e=>{
-              const copy = [...arr]; copy[i]=e.target.value; update(key, copy as any);
-            }} />
-          ))}
-          <input className="input" placeholder={placeholder} onKeyDown={e=>{
-            if (e.key==='Enter') { update(key, [...arr, (e.target as HTMLInputElement).value] as any); (e.target as HTMLInputElement).value=''; }
-          }} />
-        </div>
-        <div className="small">Druk op Enter om toe te voegen</div>
-      </div>
-    );
-  }
-
-  function exportOnboarding(){
-    const headers = ['companyName','audience','goals','objections','usps','callToActions','tone','coachingFocus'];
-    const row = [
-      data.companyName,
-      data.audience.join(' | '),
-      data.goals.join(' | '),
-      data.objections.join(' | '),
-      data.usps.join(' | '),
-      data.callToActions.join(' | '),
-      data.tone,
-      data.coachingFocus.join(' | ')
-    ];
-    const csv = headers.join(',') + '\n' + row.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',');
-    const blob = new Blob([csv], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'onboarding.csv'; a.click();
-    URL.revokeObjectURL(url);
-  }
+  const step = steps[i]
+  const isTextArea = step.key!=='companyName' && step.key!=='tone'
 
   return (
-    <div>
-      <div className="flex">
-        <h2 style={{fontWeight:700}}>Onboarding</h2>
-        <button className="btn right" onClick={exportOnboarding}>⬇️ Exporteer (CSV/Excel)</button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Onboarding</h2>
+        <Button variant="secondary" onClick={exportCSV}>⬇️ Export</Button>
       </div>
 
-      <div className="grid grid-3">
-        <div className="card">
-          <label className="small">Bedrijfsnaam</label>
-          <input className="input" value={data.companyName} onChange={e=>update('companyName', e.target.value)} placeholder="Pleefy BV" />
-          <label className="small" style={{marginTop:8}}>Tone of voice</label>
-          <select className="select" value={data.tone} onChange={e=>update('tone', e.target.value as any)}>
-            <option value="enthousiast">Enthousiast</option>
-            <option value="informeel">Informeel</option>
-            <option value="formeel">Formeel</option>
-            <option value="neutraal">Neutraal</option>
-          </select>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Stap {i+1} / {steps.length} – {step.label}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4">
+            {step.key==='companyName' && (<div><Label>Bedrijfsnaam</Label><Input value={data.companyName} onChange={e=>setData({...data, companyName:e.target.value})} placeholder="Pleefy BV" /></div>)}
+            {step.key==='tone' && (
+              <div>
+                <Label>Tone of voice</Label>
+                <select className="h-10 rounded-xl border px-3" value={data.tone} onChange={e=>setData({...data, tone:e.target.value})}>
+                  <option value="enthousiast">Enthousiast</option>
+                  <option value="informeel">Informeel</option>
+                  <option value="formeel">Formeel</option>
+                  <option value="neutraal">Neutraal</option>
+                </select>
+              </div>
+            )}
+            {isTextArea && (<div><Label>{step.label}</Label><Textarea value={(data as any)[step.key]} onChange={e=>setData({...data, [step.key]: e.target.value})} placeholder="Scheid items met ; (puntkomma)" /></div>)}
+          </div>
 
-        {listInput('Doelgroep(en)', 'audience', 'Voeg doelgroep toe…')}
-        {listInput('Doelen (per gesprek)', 'goals', 'Voeg doel toe…')}
+          <div className="mt-6 flex justify-between">
+            <Button variant="secondary" onClick={()=>setI(Math.max(0,i-1))}>Vorige</Button>
+            <div className="flex gap-2">
+              <Button onClick={()=>setI(Math.min(steps.length-1,i+1))}>{i===steps.length-1?'Afronden':'Volgende'}</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-        {listInput('Veelvoorkomende bezwaren', 'objections', 'Voeg bezwaar toe…')}
-        {listInput('Unique Selling Points (USP’s)', 'usps', 'Voeg USP toe…')}
-        {listInput('Call-to-Actions (CTA’s)', 'callToActions', 'Voeg CTA toe…')}
-
-        {listInput('Coaching focus', 'coachingFocus', 'Voeg coaching focus toe…')}
-      </div>
-
-      <div className="card">
-        <h3 style={{marginTop:0}}>Zo gebruikt Pleefy dit</h3>
-        <ul>
-          <li>Realtime scripts afgestemd op doelgroep + fase in gesprek</li>
-          <li>Bezwaren herkennen en suggesties geven om ze te tackelen</li>
-          <li>Coachingspunten per medewerker en per weekrapport</li>
-        </ul>
-        <div className="small">Alles wordt lokaal opgeslagen (demo). Bij livegang koppelen we dit aan jullie database.</div>
-      </div>
+      <Card>
+        <CardHeader><CardTitle>Samenvatting</CardTitle></CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-4">
+          {Object.entries(data).map(([k,v]) => (
+            <div key={k} className="border rounded-xl p-4">
+              <div className="text-xs text-muted-foreground uppercase">{k}</div>
+              <div className="font-medium mt-1 whitespace-pre-wrap">{String(v)}</div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

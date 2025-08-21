@@ -1,82 +1,70 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { conversations as seed, employees } from '../../lib/data';
+import { useEffect, useMemo, useState } from 'react'
+import { conversations as seed, employees } from '../../lib/data'
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card'
+import { Input } from '../../components/ui/input'
+import { Select } from '../../components/ui/select'
+import { Button } from '../../components/ui/button'
 
-type Feedback = Record<string,'up'|'down'|undefined>;
+type Feedback = Record<string,'up'|'down'|undefined>
 
-export default function ConversationsPage() {
-  const [query,setQuery] = useState('');
-  const [employee,setEmployee] = useState<string>('');
-  const [feedback,setFeedback] = useState<Feedback>({});
+export default function ConversationsPage(){
+  const [q,setQ] = useState('')
+  const [employee,setEmployee] = useState('')
+  const [feedback,setFeedback] = useState<Feedback>({})
 
-  // load/save feedback from localStorage
-  useEffect(()=>{
-    const saved = localStorage.getItem('pleefy-feedback');
-    if (saved) setFeedback(JSON.parse(saved));
-  },[]);
-  useEffect(()=>{
-    localStorage.setItem('pleefy-feedback', JSON.stringify(feedback));
-  },[feedback]);
+  useEffect(()=>{ const s = localStorage.getItem('pleefy-feedback'); if (s) setFeedback(JSON.parse(s)) },[])
+  useEffect(()=>{ localStorage.setItem('pleefy-feedback', JSON.stringify(feedback)) },[feedback])
 
-  const rows = useMemo(()=>{
-    return seed.filter(c => 
-      (!employee || c.employee===employee) &&
-      (c.customer.toLowerCase().includes(query.toLowerCase()) || c.summary.toLowerCase().includes(query.toLowerCase()))
-    ).map(c=> ({...c, feedback: feedback[c.id] ?? c.feedback}));
-  },[employee,query,feedback]);
+  const rows = useMemo(()=> seed.filter(c =>
+    (!employee || c.employee===employee) &&
+    (c.customer.toLowerCase().includes(q.toLowerCase()) || c.summary.toLowerCase().includes(q.toLowerCase()))
+  ).map(c => ({...c, feedback: feedback[c.id] ?? c.feedback})), [q, employee, feedback])
 
-  const upCount = rows.filter(r=>r.feedback==='up').length;
-  const downCount = rows.filter(r=>r.feedback==='down').length;
-
-  function exportCSV() {
-    const headers = ['id','date','employee','customer','type','durationMin','feedback','summary'];
-    const lines = [headers.join(',')].concat(rows.map(r=>[r.id,r.date,r.employee,r.customer,r.type,r.durationMin,r.feedback??'', JSON.stringify(r.summary)].join(',')));
-    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'conversations.csv'; a.click();
-    URL.revokeObjectURL(url);
+  function exportCSV(){
+    const headers = ['id','date','employee','customer','type','durationMin','feedback','summary']
+    const lines = [headers.join(',')].concat(rows.map(r=>[r.id,r.date,r.employee,r.customer,r.type,r.durationMin,r.feedback??'', JSON.stringify(r.summary)].join(',')))
+    const blob = new Blob([lines.join('\n')], {type:'text/csv'})
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='conversations.csv'; a.click(); URL.revokeObjectURL(url)
   }
 
   return (
-    <div>
-      <div className="flex">
-        <h2 style={{fontWeight:700}}>Conversations</h2>
-        <div className="right small">👍 {upCount} · 👎 {downCount}</div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Conversations</h2>
+        <Button onClick={exportCSV} variant="secondary">⬇️ Export</Button>
       </div>
 
-      <div className="card grid" style={{gridTemplateColumns:'1fr 200px 160px'}}>
-        <input className="input" placeholder="Zoek op klant of samenvatting…" value={query} onChange={e=>setQuery(e.target.value)} />
-        <select className="select" value={employee} onChange={e=>setEmployee(e.target.value)}>
-          <option value="">Alle medewerkers</option>
-          {employees.map(emp=>(<option key={emp} value={emp}>{emp}</option>))}
-        </select>
-        <button className="btn" onClick={exportCSV}>⬇️ Exporteer (CSV/Excel)</button>
-      </div>
+      <Card>
+        <CardContent className="grid md:grid-cols-3 gap-4">
+          <Input placeholder="Zoek op klant of samenvatting…" value={q} onChange={e=>setQ(e.target.value)} />
+          <Select value={employee} onChange={e=>setEmployee(e.target.value)}>
+            <option value="">Alle medewerkers</option>
+            {employees.map(emp=>(<option key={emp} value={emp}>{emp}</option>))}
+          </Select>
+        </CardContent>
+      </Card>
 
-      <div className="card">
-        <table className="table">
-          <thead>
-            <tr><th>Datum</th><th>Medewerker</th><th>Klant</th><th>Type</th><th>Duur</th><th>Feedback</th><th>Actie</th></tr>
-          </thead>
-          <tbody>
-            {rows.map(r=>(
-              <tr key={r.id}>
-                <td>{new Date(r.date).toLocaleString()}</td>
-                <td>{r.employee}</td>
-                <td>{r.customer}</td>
-                <td><span className="badge">{r.type}</span></td>
-                <td>{r.durationMin}m</td>
-                <td>{r.feedback==='up'?'👍':'👎'}</td>
-                <td className="flex">
-                  <button className="btn" onClick={()=>setFeedback(f=>({...f,[r.id]:'up'}))}>👍</button>
-                  <button className="btn" style={{background:'#ef4444'}} onClick={()=>setFeedback(f=>({...f,[r.id]:'down'}))}>👎</button>
-                </td>
-              </tr>
+      <Card>
+        <CardHeader><CardTitle>Gesprekken</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {rows.map(r => (
+              <div key={r.id} className="flex items-center gap-3 border rounded-xl p-3">
+                <div className="w-40 text-sm text-muted-foreground">{new Date(r.date).toLocaleString()}</div>
+                <div className="w-28">{r.employee}</div>
+                <div className="flex-1 font-medium">{r.customer} <span className="ml-2 text-xs text-muted-foreground">({r.type})</span></div>
+                <div className="w-16 text-sm text-muted-foreground">{r.durationMin}m</div>
+                <div className="w-12 text-lg">{r.feedback==='up'?'👍':'👎'}</div>
+                <div className="flex gap-2">
+                  <Button onClick={()=>setFeedback(f=>({...f,[r.id]:'up'}))}>👍</Button>
+                  <Button onClick={()=>setFeedback(f=>({...f,[r.id]:'down'}))} variant="destructive">👎</Button>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
